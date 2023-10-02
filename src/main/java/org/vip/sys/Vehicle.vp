@@ -1,0 +1,11 @@
+class Vehicle {
+    object car1 : Cars.class;
+    method Vehicle
+    {
+        car1.HelloWord(titan : "titan called from vehicle class");
+    }
+
+    method ApplyBrake {
+        car1.HelloWord(titan : "titan applied break");
+     }
+}

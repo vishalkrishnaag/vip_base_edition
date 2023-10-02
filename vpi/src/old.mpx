@@ -1,0 +1,451 @@
+//"../src/test/java/output.vpx"
+use std::error::Error;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
+use std::collections::BinaryHeap;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+struct Student {
+    name: String,
+    info: Vec<String>,
+}
+
+impl Student {
+    fn new(name: String) -> Self {
+        Self { name, info: Vec::new() }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+struct Course {
+    name: String,
+    info: Vec<String>,
+}
+
+impl Course {
+    fn new(name: String) -> Self {
+        Self { name, info: Vec::new() }
+    }
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let file = File::open("../src/test/java/output.vpx")?;
+    let reader = BufReader::new(file);
+
+    let mut student_heap = BinaryHeap::new();
+    let mut course_heap = BinaryHeap::new();
+
+    let mut current_student = None;
+    let mut current_course = None;
+
+    for line in reader.lines() {
+        let line = line?;
+        if line.is_empty() {
+            continue;
+        }
+        if line.starts_with("10") {
+            // Start of a new student
+            if let Some(student) = current_student {
+                student_heap.push(student);
+            }
+            current_student = Some(Student::new(line.splitn(2, ' ').nth(1).unwrap().to_string()));
+            current_student.as_mut().unwrap().info.clear();
+        } else if line.starts_with("11") {
+            // Start of a new course
+            if let Some(course) = current_course {
+                course_heap.push(course);
+            }
+            current_course = Some(Course::new(line.splitn(2, ' ').nth(1).unwrap().to_string()));
+            current_course.as_mut().unwrap().info.clear();
+        } else {
+            // Collect lines for the current student or course
+            if let Some(student) = current_student.as_mut() {
+                student.info.push(line.to_string());
+            }
+            if let Some(course) = current_course.as_mut() {
+                course.info.push(line.to_string());
+            }
+        }
+    }
+
+    // Push the last student and course if they exist
+    if let Some(student) = current_student {
+        student_heap.push(student);
+    }
+    if let Some(course) = current_course {
+        course_heap.push(course);
+    }
+
+    println!("Student heap:");
+    while let Some(student) = student_heap.pop() {
+        println!("Student: {} {:?}", student.name, student.info);
+    }
+
+    println!("Course heap:");
+    while let Some(course) = course_heap.pop() {
+        println!("Course: {} {:?}", course.name, course.info);
+    }
+
+    Ok(())
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+use std::fs::File;
+use std::io::{BufReader, BufRead};
+
+
+fn split_string(input: &String, part_number: usize) -> String {
+    let parts: Vec<&str> = input.split_whitespace().collect();
+
+    if parts.len() >= 2 {
+        return parts[part_number].to_string();
+    } else {
+        return String::new();
+    }
+}
+
+fn string_to_i32(string: String) -> Option<i32> {
+    // Try to parse the string as an i32.
+    let number = string.parse::<i32>();
+
+    // If the parsing was successful, return the number.
+    match number {
+        Ok(n) => Some(n),
+        Err(_) => None,
+    }
+}
+
+fn load_field(content: &String) -> String
+{
+    //add other types checking now string only
+    let mut temp=&content[3..];
+    return temp.to_string();
+}
+fn get_operand(content: &String) -> String
+{
+    let mut temp = &content[4..];
+    return temp.to_string();
+}
+fn get_variable(content: &String) -> usize
+{
+    let mut temp = &content[3..];
+    println!("content : {}",temp);
+    return temp.parse().unwrap();
+}
+
+// fn execute(field_heap: &Vec<FieldTable>, method_heap: &Vec<MethodTable>, main_method: usize) {
+//     let mut target_method: Option<&MethodTable> = method_heap.get(main_method - 1);
+//     let mut dummy_register: String = String::new();
+//     if target_method.unwrap().method.is_empty() {
+//         return;
+//     }
+//
+//     for opcode in &target_method.unwrap().method {
+//         if opcode=="PRL"{
+//             println!("{}", dummy_register);
+//         }
+//         else if opcode.starts_with("SV"){
+//             let field: usize = get_variable(opcode);
+//             let field_data = field_heap.get(field - 1).unwrap();
+//             dummy_register = load_field(&field_data.content);
+//         }
+//     }
+//  }
+
+fn fillMethodHeap() -> (i32,Vec<(i32, Vec<String>)>) {
+    let mut method_heap: Vec<(i32,Vec<String>)> = Vec::new();
+    let file = File::open("../src/test/java/output.vpx");
+    let reader = BufReader::new(file.unwrap());
+    let mut method_vector: Vec<String> = Vec::new();
+    let index = 0;
+    let mut current_class = 0;
+    let mut current_method = 0;
+    let mut start_execution: i32 = 0;
+    for  line in reader.lines() {
+        let line = line.unwrap();
+
+        if line.starts_with("CLB") {
+            current_class = current_class + 1;
+        }
+        else if line.starts_with("CLE") {
+            current_method =0;
+        }
+        else if line.starts_with("MEB") {
+            current_method = current_method + 1;
+        }
+        else if line.starts_with("ME") {
+            method_heap.push((current_class,method_vector.clone()));
+            method_vector.clear();
+        }
+        else if line.starts_with("BE") {
+            start_execution = current_method;
+        }
+        else {
+            method_vector.push(line.clone());
+            println!("METHOD-> {}", line)
+        }
+    }
+    (start_execution,method_heap)
+}
+
+fn fillFieldHeap() -> Vec<(i32, i32, String)> {
+    let file = File::open`("../src/test/java/output.clx");
+    let reader = BufReader::new(file.unwrap());
+    let mut field_heap: Vec<(i32,i32,String)> = Vec::new();
+    let mut current_class = 0;
+    let mut current_field = 0;
+    for  line in reader.lines() {
+        let line = line.unwrap();
+
+        if line.starts_with("CLB") {
+            current_class = current_class + 1;
+        }
+        else if line.starts_with("CLE") {
+            current_field =0;
+        }
+        else if line.starts_with("DF") {
+            current_field = current_field + 1;
+            field_heap.push((current_class,current_field,line.clone()));
+        }
+        else {
+            println!("got {}", line);
+
+        }
+
+        // println!("Line {}: {}", index + 1, line);
+    }
+    field_heap
+}
+fn main() -> std::io::Result<()> {
+    // method_heap -> class_id, method
+   let methods : (i32,Vec<(i32, Vec<String>)>) = fillMethodHeap();
+    let main_id : i32 = methods.0;
+    let method_table = methods.1;
+
+    // field_heap -> class_id, field
+   let fields :Vec<(i32, i32, String)> = fillFieldHeap();
+    Ok(())
+}
+
+
+
+
+
+
+
+
+use std::collections::HashMap;
+
+/**
+ auther  Kyle Kestell for c implementation
+* https://github.com/kkestell/tiny-vm
+* our team converted his c implementation to rust
+* and dev working on the base model in c
+* that's why respective user is annotated
+
+
+No.    | Keyword | Instruction
+-------|---------|----------------
+0x00   | `halt`  | Halt
+0x01   | `nop`   | No Operation
+0x02   | `li`    | Load Immediate
+0x03   | `lw`    | Load Word
+0x04   | `sw`    | Store Word
+0x05   | `add`   | Add
+0x06   | `sub`   | Subtract
+0x07   | `mult`  | Multiply
+0x08   | `div`   | Divide
+0x09   | `j`     | Unconditional Jump
+0x0A   | `jr`    | Unconditional Jump (Register)
+0x0B   | `beq`   | Branch if Equal
+0x0C   | `bne`   | Branch if Not Equal
+0x0D   | `inc`   | Increment Register
+0x0E   | `dec`   | Decrement Register
+
+
+ */
+
+const NUM_REGS: usize = 4;
+const RAM_SIZE: usize = 65535;
+const OPCODE_SHIFT: u64 = 56;
+const R0_SHIFT: u64 = 48;
+const R1_SHIFT: u64 = 40;
+const R2_SHIFT: u64 = 32;
+const IM_MASK: u64 = 0x00000000FFFFFFFF;
+/*
+ * we only read 100 lines from program after that
+ * we will seek based on interrupt from pc
+*/
+const PROGRAM_SIZE: usize = 100;
+
+struct Machine {
+    pc: usize,
+    program: [u64; PROGRAM_SIZE],
+    ram: [u64; RAM_SIZE],
+    r: [u64; NUM_REGS],
+    running: bool,
+    exception : bool,
+    call_stack: Vec<usize>,
+    method_list:HashMap<usize,usize>,
+    labels: HashMap<String, usize>,
+}
+
+impl Machine {
+    fn new() -> Self {
+        Machine {
+            pc: 0,
+            program: [0; PROGRAM_SIZE],
+            ram: [0; RAM_SIZE],
+            r: [0; NUM_REGS],
+            running: true,
+            exception: false,
+            call_stack: Vec::new(),
+            method_list: HashMap::new(),
+            labels: HashMap::new(),
+        }
+    }
+
+    fn fetch(&mut self) -> &u64 {
+        let instr = &self.program[self.pc];
+        self.pc += 1;
+        instr
+    }
+
+    fn load_program(&mut self, filename: &str) -> std::io::Result<()> {
+        use std::fs::File;
+        use std::io::Read;
+
+        let mut file = File::open(filename)?;
+        let mut buffer = [0; PROGRAM_SIZE * 8]; // 8 bytes per u64
+        file.read_exact(&mut buffer)?;
+
+        // Convert bytes to u64 elements for the program array
+        for i in 0..PROGRAM_SIZE {
+            let start = i * 8;
+            let end = start + 8;
+            self.program[i] = u64::from_le_bytes(buffer[start..end].try_into().unwrap());
+        }
+
+        Ok(())
+    }
+
+
+
+
+    fn cycle(&mut self) {
+        let instr = *self.fetch();
+        println!("{:08x} {:016x} ", self.pc - 1, instr);
+        let mut pc = 0;
+
+        while pc < self.program.len() && self.running {
+            let instr = self.program[pc];
+
+            // Interpret and execute the instruction
+            // let op = (instr & 0xFF00000000000000) >> 56;
+            // let r0 = (instr & 0x00FF000000000000) >> 48;
+            // let r1 = (instr & 0x0000FF0000000000) >> 40;
+            // let r2 = (instr & 0x000000FF00000000) >> 32;
+            // let im = *instr as u32;
+            let op = (instr & (0xFF << OPCODE_SHIFT)) >> OPCODE_SHIFT;
+            let r0 = (instr & (0xFF << R0_SHIFT)) >> R0_SHIFT;
+            let r1 = (instr & (0xFF << R1_SHIFT)) >> R1_SHIFT;
+            let r2 = (instr & (0xFF << R2_SHIFT)) >> R2_SHIFT;
+            let im = instr & IM_MASK as u64;
+
+            match op {
+                0x0 => {
+                    // Halt
+                    self.running = false;
+                }
+                0x1 => {
+                    // NOP
+                }
+                0x2 => {
+                    // LI
+                    self.r[r0 as usize] = im;
+                }
+                0x3 => {
+                    // LW
+                    self.r[r0 as usize] = self.ram[self.r[r1 as usize] as usize];
+                }
+                0x4 => {
+                    // SW
+                    self.ram[self.r[r1 as usize] as usize] = self.r[r0 as usize];
+                }
+                0x5 => {
+                    // Define Label
+                    let label_name = format!("label{}", r0);
+                    self.labels.insert(label_name, pc);
+                }
+                0x6 => {
+                    // Jump to Label
+                    let label_name = format!("label{}", self.r[r0 as usize]);
+                    if let Some(&label_address) = self.labels.get(&label_name) {
+                        pc = label_address;
+                    } else {
+                        println!("Label '{}' not found.", label_name);
+                        self.running = false;
+                    }
+                }
+                0x7 => self.r[r0 as usize] = self.r[r1 as usize] * self.r[r2 as usize], // mult
+                0x8 => self.r[r0 as usize] = self.r[r1 as usize] / self.r[r2 as usize], // div
+                0x9 => self.pc = im as usize, // j
+                0xA => self.pc = self.r[r0 as usize] as usize, // jr
+                0xB => {
+                    if self.r[r0 as usize] == self.r[r1 as usize] {
+                        self.pc = self.r[r2 as usize] as usize
+                    }
+                } // beq
+                0xC => self.r[r0 as usize] += 1, // inc
+                0xE => self.r[r0 as usize] -= 1, // dec
+                0xF => {}, // method_begin
+                0xF0 => {} // not implemented
+
+                _ => {
+                    println!("Invalid operation: {}", op);
+                    self.running = false;
+                }
+            }
+
+            // Increment the program counter
+            pc += 1;
+        }
+
+        self.debug_registers();
+    }
+
+    fn debug_registers(&self) {
+        for reg in &self.r {
+            print!("{:08x} ", reg);
+        }
+        println!();
+    }
+
+}
+
+fn main() -> std::io::Result<()> {
+    let mut machine = Machine::new();
+
+    if let Err(err) = machine.load_program("../src/test/java/output.bin") {
+        println!("Error in loading program: {:?}", err);
+        return Ok(());
+    }
+        machine.cycle();
+    Ok(())
+}

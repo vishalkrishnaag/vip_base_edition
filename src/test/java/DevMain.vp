@@ -1,0 +1,8 @@
+shared class DevMain {
+   var archdiocese : "hello archdiocese";
+    method main {
+       archdiocese : archdiocese + " hello world";
+       System.println(self.archdiocese);
+       return;
+   }
+}

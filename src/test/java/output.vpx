@@ -1,0 +1,13 @@
+begin
+pushs "hello archdiocese"
+str 0
+label main
+rts 0
+pushs " hello world"
+add
+str 0
+rts 0
+call println
+ret
+end
+call main
