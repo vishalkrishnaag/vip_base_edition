@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.vip.Exception.VipCompilerException;
 import org.vip.Memmory.Symbol;
 import org.vip.Memmory.event;
+import org.vip.Parser.ConversionHelper;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -50,6 +51,7 @@ public class CodeGen {
     private boolean paddingEnabled = false;
     private boolean write_count;
     private int label;
+    private ConversionHelper conversionHelper;
 
     public CodeGen(List<Symbol> events) throws Exception {
         this.events = events;
@@ -60,6 +62,7 @@ public class CodeGen {
         fieldList = new ArrayList<>();
         methodList = new ArrayList<>();
         ObjectList = new ArrayList<>();
+        conversionHelper = new ConversionHelper();
         System.out.println("total " + events.size() + " events");
         //implement write logic here
         totalSize = events.size();
@@ -140,13 +143,18 @@ public class CodeGen {
     }
 
     @Contract(mutates = "this")
-    private @NotNull String getLabel() {
+    private @NotNull Integer getLabel() {
         label++;
-        return "L" + label;
+//        return "L" + label;
+        return  label;
     }
 
-    private void emit(String data) throws IOException {
-            this.file.println(data);
+    private void emitData(int data) throws IOException {
+        this.file.println(data);
+        this.write_count=true;
+    }
+    private void emitInstruction(Instruction data) throws IOException {
+        this.file.println("@"+data.ordinal());
         this.write_count=true;
     }
 
@@ -168,7 +176,7 @@ public class CodeGen {
                 throw new RuntimeException("Error in code analysis got " + cevent.eventType);
             }
         }
-        emit("call main");
+        emitInstruction(Instruction.call_main);
     }
 
     private void is_class_exist(String s) throws VipCompilerException {
@@ -258,7 +266,7 @@ public class CodeGen {
             expect(event.CLASS_DECL, true);
         }
 
-        emit(Instruction.begin+"");
+        emitInstruction(Instruction.begin);
 
         while (cevent.eventType != event.CLASS_END) {
             if (cevent.eventType == event.VAR_DECL_BEGIN) {
@@ -273,7 +281,7 @@ public class CodeGen {
                 throw new VipCompilerException("unsupported data type got " + cevent.eventType);
             }
         }
-        emit("end");
+        emitInstruction(Instruction.end);
         expect(event.CLASS_END);
     }
 
@@ -290,7 +298,9 @@ public class CodeGen {
                 throw new VipCompilerException("cannot invoke a shared class '" + taget_class + "' in vip ");
             }
             ObjectList.add(create_Object(objectName, objectIndex, RefClassId));
-            emit(Instruction.make_obj + " " + objectIndex + " " + RefClassId);
+            emitData(objectIndex);
+            emitData(RefClassId);
+            emitInstruction(Instruction.make_obj);
             objectIndex++;
         }
         expect(event.CLASS_INVOKE_END);
@@ -308,7 +318,9 @@ public class CodeGen {
         expect(event.METHOD_DECL_BEGIN);
         String methodName = symbol.Elements.get(0);
         Integer methodId= getMethodId(methodName,currentClassId);
-        emit( "label "+methodName);
+        int index = getMethodId(methodName,currentClassId);
+        emitData(index);
+        emitInstruction( Instruction.method_begin);
         this.paddingEnabled = true;
         this.write_count =false;
         GenerateCodeForBlockStatements();
@@ -415,7 +427,7 @@ public class CodeGen {
             // return x+a;
             GenerateCodeForExpression(currentClassId);
         }
-        emit(Instruction.ret+"");
+        emitInstruction(Instruction.ret);
         expect(event.RETURN_END);
     }
 
@@ -475,13 +487,15 @@ public class CodeGen {
              * value1 -> objectId
              */
             GenerateCodeForExpressionList(t.value1);
-            emit(Instruction.call_obj + " " + methodId + " " + t.value);
+            emitData(methodId);
+            emitData(t.value);
+            emitInstruction(Instruction.call_obj);
         } else {
             // shared class.method()
             GenerateCodeForExpressionList(t.value);
-            //todos : because we are now using string instead of int that's why methodId is not used
             int methodId = getMethodId(caller, t.value);
-            emit(Instruction.call + " " + caller);
+            emitData(methodId);
+            emitInstruction(Instruction.call);
         }
         expect(event.CHAIN_METHOD_END);
     }
@@ -491,7 +505,8 @@ public class CodeGen {
         expect(event.METHOD_CALL_BEGIN);
         GenerateCodeForExpressionList(currentClassId);
         expect(event.METHOD_CALL_END);
-        emit(Instruction.call + " " + getMethodId(cevent1.Elements.get(0), currentClassId));
+        emitData(getMethodId(cevent1.Elements.get(0), currentClassId));
+        emitInstruction(Instruction.call);
     }
 
     private void GenerateCodeForExpressionList(int classId) throws Exception {
@@ -513,7 +528,7 @@ public class CodeGen {
                 Symbol mEvent = cevent;
                 advanceEvent();
                 GenerateCodeForTerminal(classId);
-                emit(mEvent.Elements.get(0));
+                emitInstruction(conversionHelper.convertToInstruction(mEvent.Elements.get(0)));
             }
         } else {
             advanceEvent();
@@ -526,19 +541,31 @@ public class CodeGen {
         if (cevent.eventType == event.STATIC_FILED) {
             String stat_field = cevent.Elements.get(0);
             if (cevent.Elements.get(1) == "STRING") {
-                emit(Instruction.pushf + " " + stat_field);
+                for(char i : stat_field.toCharArray())
+                {
+                    emitData((int)i);
+                }
+                emitInstruction(Instruction.push);
             } else if (cevent.Elements.get(1) == "INT") {
-
-                emit(Instruction.push + " " + stat_field);
+                for(char i : stat_field.toCharArray())
+                {
+                    emitData((int)i);
+                }
+                emitInstruction(Instruction.push);
             } else if (cevent.Elements.get(1) == "FLOAT") {
 
-                emit(Instruction.pushf + " " + stat_field);
+                for(char i : stat_field.toCharArray())
+                {
+                    emitData((int)i);
+                }
+                emitInstruction(Instruction.pushf);
             } else if (cevent.Elements.get(1) == "NULL_T") {
-
-                emit(Instruction.push + " " + Instruction.NUL);
+                emitData(Instruction.NUL.ordinal());
+                emitInstruction(Instruction.push);
             } else {
                 // todo : it is wrong rts required
-                emit(Instruction.push + " " + getFieldId(stat_field, currentClassId));
+                emitData(getFieldId(stat_field, currentClassId));
+                emitInstruction(Instruction.push);
             }
             advanceEvent();
         }
@@ -575,22 +602,29 @@ public class CodeGen {
 //                        emit(Character.getNumericValue(c));
 //                        System.out.print(c);
 //                    }
-                emit(Instruction.pushs + " " + stat_field);
+                for(char i : stat_field.toCharArray())
+                {
+                    emitData(Character.getNumericValue(i));
+                }
+                emitInstruction(Instruction.pushs);
             } else if (cevent.Elements.get(1) == "INT") {
 
-                emit(Instruction.push + " " + stat_field);
+                emitData(Integer.parseInt(stat_field));
+                emitInstruction(Instruction.push);
             } else if (cevent.Elements.get(1) == "NULL_T") {
 
 //                emit(Instruction.push + " " + Instruction.NUL);
                 // null by default no need to push
             } else if (cevent.Elements.get(1) == "TRUE") {
-
-                emit(Instruction.pushb + "  true");
+                emitData(1);
+                emitInstruction(Instruction.pushb);
             } else if (cevent.Elements.get(1) == "FALSE") {
-                emit(Instruction.pushb + "  false");
+                emitData(1);
+                emitInstruction(Instruction.pushb);
             } else {
                // todo: rts is required
-                emit(Instruction.push + " " + stat_field);
+                throw new VipCompilerException("sick undef error hox");
+//                emit(Instruction.push + " " + stat_field);
             }
             advanceEvent();
         }
@@ -599,7 +633,8 @@ public class CodeGen {
         }
         if (cevent.eventType == event.VAR_MAPPING) {
             // system.println(in : example) here in is the classId of method and example requires another classId ie current-class-id
-            emit(Instruction.rts + " " + getFieldId(cevent.Elements.get(0), classId));
+            emitData(getFieldId(cevent.Elements.get(0), classId));
+            emitInstruction(Instruction.rts);
             advanceEvent();
         }
         if (cevent.eventType == event.EXPR_LIST_BEGIN) {
@@ -621,7 +656,8 @@ public class CodeGen {
 
     private void GenerateCodeForSelf() throws VipCompilerException, IOException {
         String fieldName = cevent.Elements.get(0);
-        emit(Instruction.rts + " " + getFieldId(cevent.Elements.get(0), currentClassId));
+        emitData(getFieldId(cevent.Elements.get(0), currentClassId));
+        emitInstruction(Instruction.rts);
         expect(event.SELF_FIELD);
     }
 
@@ -676,7 +712,8 @@ public class CodeGen {
         // return x+a;
         GenerateCodeForExpression(currentClassId);
         // store register_data (expression) -> field_id
-        emit(Instruction.str + " " + getFieldId(cevent.Elements.get(0), currentClassId));
+        emitData(getFieldId(cevent.Elements.get(0), currentClassId));
+        emitInstruction(Instruction.str);
         expect(event.VAR_MAPPING);
         expect(event.VAR_ASSIGN_END);
     }
@@ -685,27 +722,28 @@ public class CodeGen {
         expect(event.VAR_ASSIGN_BEGIN);
         GenerateCodeForExpression(classId);
         // store register_data (expression) -> field_id
-        emit(Instruction.str + " " + getFieldId(cevent.Elements.get(0), classId));
+        emitData(getFieldId(cevent.Elements.get(0), classId));
+        emitInstruction(Instruction.str);
         expect(event.VAR_MAPPING);
         expect(event.VAR_ASSIGN_END);
     }
 
     private void GenerateCodeForIfStatements() throws Exception {
         expect(event.IF_COND_BEGIN);
-        String labelName = getLabel();
-        String bodyName = getLabel();
-        String elseName = getLabel();
-        emit(Instruction.call+" "+labelName);
-        emit("je "+bodyName);
-        emit("jne "+elseName);
+        Integer labelName = getLabel();
+        Integer bodyName = getLabel();
+        Integer elseName = getLabel();
+        emitData(labelName);
+        emitInstruction(Instruction.call);
+        emitData(bodyName);
+        emitInstruction(Instruction.jump_if_equal);
+        emitData(elseName);
+        emitInstruction(Instruction.jump_if_not_equal);
         if (cevent.eventType == event.EXPR_LIST_BEGIN) {
-            emit("label "+labelName);
             GenerateCodeForExpressionList(currentClassId);
-            emit("label "+bodyName);
             GenerateCodeForBlockStatements();
         } else if (cevent.eventType == event.ELSE_BEGIN) {
             expect(event.ELSE_BEGIN);
-            emit("label "+bodyName);
             GenerateCodeForBlockStatements();
             expect(event.ELSE_END);
         } else if (cevent.eventType == event.ELIF_BEGIN) {
@@ -721,29 +759,30 @@ public class CodeGen {
     private void GenerateCodeForWhileStatements() throws Exception {
         expect(event.WHILE_BEGIN);
         // todo: implement while
-        String labelName = getLabel();
-        String bodyName = getLabel();
-        emit("label "+labelName);
+        Integer labelName = getLabel();
+        Integer bodyName = getLabel();
         GenerateCodeForExpressionList(currentClassId); // condition
-        emit("stop");
-        emit("label "+bodyName);
+        emitData(labelName);
+        emitInstruction(Instruction.register_rule);
         GenerateCodeForBlockStatements(); // body
-        emit("stop");
-        emit(Instruction.je+ " "+bodyName);
-        emit(Instruction.call+ " "+labelName);
+        emitData(bodyName);
+        emitInstruction(Instruction.register_rule);
+        emitData(bodyName);
+        emitInstruction(Instruction.jump_if_equal);
+        emitData(labelName);
+        emitInstruction(Instruction.call);
         expect(event.WHILE_END);
     }
 
     private void GenerateCodeForVarDecl() throws Exception {
         expect(event.VAR_DECL_BEGIN);
-        String fields = "";
 
         if (cevent.eventType == event.VAR_DECL_IASSIGN) {
             // a : data
             for (String it : cevent.getElements()) {
-                fields += Instruction.str + " " + getFieldId(it, currentClassId) + "\n";
+                emitData(getFieldId(it, currentClassId));
+                emitInstruction(Instruction.register_field);
             }
-            fields = fields.substring(0, fields.length() - 1); // for trimming \n
             advanceEvent();
         }
 
@@ -753,11 +792,6 @@ public class CodeGen {
         } else {
             throw new VipCompilerException("error on variable declaration got " + cevent.eventType);
         }
-        if (fields.isEmpty()) {
-            throw new VipCompilerException("field name must be required " + cevent.eventType);
-        }
-
-        emit(fields);
         expect(event.VAR_DECL_END);
     }
 

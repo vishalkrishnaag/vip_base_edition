@@ -1,8 +1,11 @@
-shared class DevMain {
-   var archdiocese : "hello archdiocese";
-    method main {
-       archdiocese : archdiocese + " hello world";
-       System.println(self.archdiocese);
-       return;
+
+shared class Cars {
+   var titan : 10 * 20 - 2 and true;
+   method HelloWord {
+      titan : titan + 1;
+   return titan;
+   }
+   method main {
+     HelloWord();
    }
 }

@@ -1,5 +1,6 @@
 package org.vip.Parser;
 
+import org.vip.Codegen.Instruction;
 import org.vip.Lexer.TokenType;
 
 public class ConversionHelper {
@@ -62,6 +63,67 @@ public class ConversionHelper {
             default -> {
 
                 return "halt";
+            }
+
+        }
+    }
+
+    public Instruction convertToInstruction(String token) {
+        switch (token) {
+            case "+" -> {
+                return Instruction.add;
+            }
+            case "-" -> {
+
+                return Instruction.sub;
+            }
+            case "*" -> {
+
+                return Instruction.mul;
+            }
+            case "/" -> {
+
+                return Instruction.div;
+            }
+            case ">" -> {
+
+                return Instruction.greater_than;
+            }
+            case ">=" -> {
+
+                return Instruction.greater_than_or_equal;
+            }
+            case "<" -> {
+
+                return Instruction.less_than;
+            }
+            case "<=" -> {
+
+                return Instruction.less_than_or_equal;
+            }
+            case "and" -> {
+
+                return Instruction.and;
+            }
+            case "or" -> {
+
+                return Instruction.or;
+            }
+            case "not" -> {
+
+                return Instruction.not;
+            }
+            case "not equal" -> {
+
+                return Instruction.not_equal;
+            }
+            case "equal" -> {
+
+                return Instruction.boolean_compare;
+            }
+            default -> {
+
+                return Instruction.halt;
             }
 
         }
