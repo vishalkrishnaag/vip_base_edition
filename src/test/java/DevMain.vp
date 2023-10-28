@@ -1,11 +1,16 @@
 
-shared class Cars {
-   var titan : 10 * 20 - 2 and true;
-   method HelloWord {
-      titan : titan + 1;
+ Cars container{
+   var titan = 10 * 20 - 2 and true;
+
+    HelloWord {
+      titan = titan + 1;
    return titan;
    }
-   method main {
+
+     main {
      HelloWord();
+     Vehicle.__init__()
+     Vehicle.__flush__()
+     Vehicle.__destroy__()
    }
 }

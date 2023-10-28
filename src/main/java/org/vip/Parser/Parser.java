@@ -12,7 +12,7 @@ public class Parser {
     private final List<Token> tokenizerOutput;
     private int currentToken;
     private Token token;
-    private String className;
+    private String containerName;
     private final List<Symbol> eventMap;
     private int label = 1;
     private ConversionHelper conversionHelper;
@@ -23,7 +23,7 @@ public class Parser {
         currentToken = 0;
         this.eventMap = new ArrayList<>();
         token = new Token();
-        className = "";
+        containerName = "";
       conversionHelper=new ConversionHelper();
     }
 
@@ -40,32 +40,25 @@ public class Parser {
 
 
     private void compile() throws VipCompilerException {
-        advanceToken(); // shared
-        if(token.getType()==TokenType.CLASS)
+        advanceToken();
+        String containerName = tokenizerOutput.get(0).getLexme();
+        if(token.getType()==TokenType.CONTAINER)
         {
-            advanceToken(); // class
-            className = token.getLexme();
-            eventMap.add(new Symbol(event.SHARED_CLASS_DECL, listOf(className)));
-            advanceToken();
-        } else if (token.getType()==TokenType.IDENTIFIER) {
-            className = token.getLexme();
-            eventMap.add(new Symbol(event.CLASS_DECL, listOf(className)));
+            eventMap.add(new Symbol(event.CLASS_DECL, listOf(containerName)));
             advanceToken();
         }
         else
         {
-            throw new VipCompilerException("Expected a class declaration ");
+            throw new VipCompilerException("Expected a container declaration  got "+token.getType());
         }
-//        if (token.getType() == TokenType.EXTENDS) {
-//            compileExtends(className);
-//        }
+
         expect(TokenType.LBRACE, true);
 
         while (currentToken < tokenizerOutput.size()) {
 
             if (exitOnSee(TokenType.RBRACE)) {
                 break;
-                // in case of class main() {}
+                // in case of container main() {}
             }
 
             if (token.getType() == TokenType.VAR) {
@@ -75,89 +68,21 @@ public class Parser {
             }
             else if(token.getType()==TokenType.IDENTIFIER)
             {
-                throw new VipCompilerException("invalid statements provided  got "+token.getLexme(),token.getLine_no(),token.getCol_no());
+                this.compileFunctionStatement();
             }
             else  if(token.getType()==TokenType.OBJECT_T)
             {
-                this.compileObjectStatement();
+                throw new VipCompilerException("unsupported datatype inside container " + token.getType());
             }
-            else if (token.getType() == TokenType.METHOD) {
-                // should be a method
-                this.compileFunctionStatement(nextToken().getLexme());
-
-            } else {
-                throw new VipCompilerException("unsupported datatype inside class , expected variable or method " + token.getType());
+            else {
+                throw new VipCompilerException("unsupported datatype inside container , expected variable or method " + token.getType());
             }
 
         }
         addEvent(event.CLASS_END, null);
     }
 
-    private void compileObjectStatement() throws VipCompilerException {
-        advanceToken(); // eat Object
-        addEvent(event.CLASS_INVOKE_BEGIN,null);
-        List<String> varList = new ArrayList<>();
-        //var a,b,c = 10 like format
-        varList.add(token.getLexme());
-        expect(TokenType.IDENTIFIER, true);
-        while (token.getType() == TokenType.COMMA || token.getType() == TokenType.IDENTIFIER || token.getType() == TokenType.ASSIGN) {
-
-            if (token.getType() == TokenType.COMMA) {
-                advanceToken(); // eat ,
-            }
-            if (token.getType() == TokenType.IDENTIFIER) {
-                varList.add(token.getLexme());
-                advanceToken(); // eat a,b
-            }
-            if (token.getType() == TokenType.ASSIGN) {
-                advanceToken();//eat :
-                addEvent(event.RERENCE_CLASS,varList);
-                addEvent(event.TARGET_CLASS,listOf(token.getLexme()));
-                expect(TokenType.IDENTIFIER,true);
-                expect(TokenType.DOT,true);
-                if(token.getType()==TokenType.IDENTIFIER)
-                {
-                    throw new VipCompilerException("unable to invoke '"+token.getLexme()+"' is a field");
-                }
-                expect(TokenType.CLASS,true);
-                addEvent(event.CLASS_INVOKE_END,null);
-                break;
-            }
-
-            if (exitOnSee(TokenType.SEMICOLON)) {
-                throw new VipCompilerException("semi colon not allowed here ");
-            }
-        }
-        if (token.getType() == TokenType.DOT) {
-            throw new VipCompilerException("dot is not allowed in class Invoking");
-        }
-        expect(TokenType.SEMICOLON,true);
-    }
-
-    private void compileExtends(String className) throws VipCompilerException {
-        List<String> varList = new ArrayList<>(100);
-        expect(TokenType.EXTENDS);
-        while (token.getType() != TokenType.LBRACE) {
-            if (token.getType() == TokenType.IDENTIFIER) {
-                if (nextToken().getType() == TokenType.DOT) {
-                    this.compileChainString(null);
-                } else {
-                    varList.add(token.getLexme());
-                    advanceToken();
-                }
-
-            } else if (token.getType() == TokenType.COMMA) {
-                advanceToken();
-            } else {
-                throw new VipCompilerException("error in extending class ");
-            }
-        }
-        addEvent(event.EXTENDS_EVENT, varList);
-    }
-
-    private void compileFunctionStatement(String methodName) throws VipCompilerException {
-        advanceToken(); // eat function
-        match_id();
+    private void compileFunctionStatement() throws VipCompilerException {
         addEvent(event.METHOD_DECL_BEGIN, listOf(token.getLexme()));
         advanceToken(); //  eat func_name
         compileBlockStatement();
@@ -176,6 +101,8 @@ public class Parser {
                     compileChainMethod();
                 } else if (nextToken().getType() == TokenType.ASSIGN) {
                     compileVariableAssign();
+                } else if (nextToken().getType() == TokenType.LBRACE) {
+                    throw new VipCompilerException("vip does not support nested functions");
                 } else {
                     throw new VipCompilerException("undefined operation received");
                 }
@@ -193,10 +120,8 @@ public class Parser {
                 this.compileIfStatement(true);
             case RBRACE:
                 break;
-            case METHOD:
-                throw new VipCompilerException("vip does not support nested functions");
-            case CLASS:
-                throw new VipCompilerException("vip does not support nested classes");
+            case CONSTRUCTOR:
+                throw new VipCompilerException("vip does not support nested container");
             default:
                 throw new VipCompilerException("Unknown statement type " + token.getType());
         }
@@ -237,11 +162,6 @@ public class Parser {
         }
     }
 
-    private void match_id() throws VipCompilerException {
-        if (token.getType() != TokenType.IDENTIFIER) {
-            throw new VipCompilerException("expected function name");
-        }
-    }
 
     private void expect(TokenType type, boolean strict) throws VipCompilerException {
         if (token.getType() == type) {
@@ -250,12 +170,12 @@ public class Parser {
             if (strict) {
                 String err = "Compilation Error occurred type : [" + type + "] ";
                 switch (type) {
-                    case LBRACE -> err = "expected { in the class declaration ";
+                    case LBRACE -> err = "expected { in the container declaration ";
                     case LPAR -> err = "expected ( ";
                     case RPAR -> err = "expected ) ";
                     case RBRACE -> err = "expected } ";
                     case IDENTIFIER -> err = "identifier Expected";
-                    case CLASS -> err = "class Expected";
+                    case CONTAINER -> err = "container Expected";
                     case DOT -> err = "dot expected in this.expression ";
                     default -> {}
                 }
@@ -302,11 +222,11 @@ public class Parser {
         tokenList.add(token.getLexme());
         advanceToken();
         if (token.getType() == TokenType.DOT) {
-            /* classA.objectAB = expression is deprecated in vip
-               you can use classA.method() { return objectAb.something() }
+            /* container.objectAB = expression is deprecated in vip
+               you can use container.method() { return objectAb.something() }
              */
             while (token.getType() == TokenType.DOT || token.getType() == TokenType.IDENTIFIER) {
-                // classA.method(this.somethingFishy);
+                // container.method(this.somethingFishy);
                 if (exitOnSee(TokenType.LPAR)) {
                     break;
                 }
@@ -352,9 +272,9 @@ public class Parser {
         advanceToken();
 
         if (token.getType() == TokenType.DOT) {
-            // classA.objectAB = expression
+            // container.objectAB = expression
             while (token.getType() == TokenType.DOT || token.getType() == TokenType.IDENTIFIER) {
-                // classA.method(this.somethingFishy);
+                // container.method(this.somethingFishy);
                 if (exitOnSee(TokenType.LPAR)) {
                     break;
                 }
@@ -391,9 +311,9 @@ public class Parser {
         advanceToken();
 
         if (token.getType() == TokenType.DOT) {
-            // classA.objectAB = expression
+            // container.objectAB = expression
             while (token.getType() == TokenType.DOT || token.getType() == TokenType.IDENTIFIER) {
-                // classA.method(this.somethingFishy);
+                // container.method(this.somethingFishy);
                 if (token.getType() == TokenType.DOT) {
                     advanceToken();
                 } else if (token.getType() == TokenType.IDENTIFIER) {

@@ -43,7 +43,6 @@ public enum TokenType {
     BOOL_T,
     VOID_T,
     STRING_T,
-    CLASS,
     IF,
     ELSE,
     WHEN,
@@ -57,11 +56,9 @@ public enum TokenType {
     STATIC,
     FIELD,
     CONSTRUCTOR,
-    METHOD,
     CUSTOM,
     SQUARE_ROOT, // it is normally bitwise xor
-    SHARED,
     NOT_EQUAL,
     SELF,
-    OBJECT_T
+    CONTAINER, OBJECT_T
 }

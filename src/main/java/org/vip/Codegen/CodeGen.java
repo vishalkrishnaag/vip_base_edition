@@ -74,7 +74,6 @@ public class CodeGen {
         if (mainFound > 1) {
             throw new VipCompilerException("Multiple Main Declartion found");
         }
-        file = new PrintWriter("src/test/java/output.vpx");
         this.Generator();
         file.close();
 
@@ -84,7 +83,6 @@ public class CodeGen {
         int currentField = 0;
         int currentMethod = 0;
         int currentClassId = 0;
-        boolean isSharedClas = false;
         classList.add(create_class("System", 0, false));
         fieldList.add(create_Field("in", 0, 0));
         methodList.add(create_tripple("println", 0, 0));
@@ -105,14 +103,10 @@ public class CodeGen {
                 // to
                 classList.add(create_class(events.get(i).Elements.get(0), currentClassId, true));
                 currentClassName = events.get(i).Elements.get(0);
-                isSharedClas = true;
                 currentClassId = currentClassId + 1;
             } else if (events.get(i).eventType == event.METHOD_DECL_BEGIN) {
                 if (events.get(i).Elements.get(0).equals("main") || events.get(i).Elements.get(0).equals("Main")) {
                     mainFound = mainFound + 1;
-                    if (!isSharedClas) {
-                        throw new VipCompilerException("main method should be called in a shared class");
-                    }
                 }
                 is_method_exist(events.get(i).Elements.get(0), getClassId(currentClassName));
                 methodList.add(create_tripple(events.get(i).Elements.get(0), currentMethod, getClassId(currentClassName)));
@@ -161,18 +155,22 @@ public class CodeGen {
     private void Generator() throws Exception {
         while (currentEvent < totalSize) {
             if (cevent.eventType == event.CLASS_DECL) {
-                System.out.println("analyzing '" + cevent.Elements.get(0) + "'.class ");
                 currentClassId = getClassId(cevent.Elements.get(0));
+                System.out.println("analyzing '" + cevent.Elements.get(0) + "'.class ");
+                if (currentClassId==1)
+                {
+                    file = new PrintWriter("src/test/java/main.vpx");
+                }
+                else
+                {
+                    file = new PrintWriter("src/test/java/"+currentClassId+".vpx");
+                }
+
                 currentClassName=cevent.Elements.get(0);
                 isCurrentClassShared = false;
                 GenerateCodeForClassDecl();
-            } else if (cevent.eventType == event.SHARED_CLASS_DECL) {
-                System.out.println("analyzing " + cevent.Elements.get(0) + ".class ");
-                currentClassId = getClassId(cevent.Elements.get(0));
-                currentClassName=cevent.Elements.get(0);
-                isCurrentClassShared = true;
-                GenerateCodeForClassDecl();
-            } else {
+            }
+            else {
                 throw new RuntimeException("Error in code analysis got " + cevent.eventType);
             }
         }
@@ -324,10 +322,11 @@ public class CodeGen {
         this.paddingEnabled = true;
         this.write_count =false;
         GenerateCodeForBlockStatements();
-        if(!write_count)
-        {
-            throw new VipCompilerException("method '"+methodName+"' has no body either comment it else remove it");
-        }
+        //not checking it now
+//        if(!write_count)
+//        {
+//            throw new VipCompilerException("method '"+methodName+"' has no body either comment it else remove it");
+//        }
         expect(event.METHOD_DECL_END);
         this.paddingEnabled = false;
     }

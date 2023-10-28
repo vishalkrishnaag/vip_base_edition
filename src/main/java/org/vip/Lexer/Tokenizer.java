@@ -41,11 +41,10 @@ public class Tokenizer {
         symbolMap.put("]", TokenType.R_SQ_BRACE);
         symbolMap.put("?", TokenType.CHECK);
         symbolMap.put(">", TokenType.GREATER_THAN);
-        symbolMap.put(":", TokenType.ASSIGN);
+        symbolMap.put("=", TokenType.ASSIGN);
         symbolMap.put("!", TokenType.NOT);
         symbolMap.put("~", TokenType.NOT);
         symbolMap.put("<", TokenType.LESS_THAN);
-        symbolMap.put("=", TokenType.EQUALS);
     }
 
     private void initializeKeywordMap() {
@@ -59,21 +58,19 @@ public class Tokenizer {
         keywordMap.put("true", TokenType.TRUE);
         keywordMap.put("false", TokenType.FALSE);
         keywordMap.put("null", TokenType.NULL_T);
-        keywordMap.put("shared", TokenType.SHARED);
         keywordMap.put("not", TokenType.NOT);
         keywordMap.put("int", TokenType.INT_T);
         keywordMap.put("string", TokenType.STRING_T);
         keywordMap.put("float", TokenType.FLOAT_T);
         keywordMap.put("boolean", TokenType.BOOL_T);
         keywordMap.put("void", TokenType.VOID_T);
-        keywordMap.put("class", TokenType.CLASS);
+        keywordMap.put("container", TokenType.CONTAINER);
         keywordMap.put("if", TokenType.IF);
         keywordMap.put("else", TokenType.ELSE);
         keywordMap.put("when", TokenType.WHEN);
         keywordMap.put("end", TokenType.END);
         keywordMap.put("while", TokenType.WHILE);
         keywordMap.put("foreach", TokenType.FOR_EACH);
-        keywordMap.put("method", TokenType.METHOD);
         keywordMap.put("custom", TokenType.CUSTOM);
         keywordMap.put("equals",TokenType.EQUALS); // equals
         keywordMap.put("greater_than",TokenType.GREATER_THAN);
@@ -128,10 +125,34 @@ public class Tokenizer {
 
                 if (Character.isWhitespace(c)) {
                     continue;  // Skip whitespace characters
-                } else if (isSymbol(Character.toString(c))) {
+                }
+                else if (isSymbol(Character.toString(c)) && c=='=') {
+                    if (line.charAt(i+1) == '=')
+                    {
+                        i++;
+                        tokens.add(new Token(TokenType.EQUALS, TokenKind.SYMBOL, currentLine, currentColumn,"=="));
+                    }
+                    else if (line.charAt(i+1) == '>')
+                    {
+                        i++;
+                        tokens.add(new Token(TokenType.GREATER_THAN_EQ, TokenKind.SYMBOL, currentLine, currentColumn,"=>"));
+                    }
+                    else if (line.charAt(i+1) == '<')
+                    {
+                        i++;
+                        tokens.add(new Token(TokenType.LESS_THAN_EQ, TokenKind.SYMBOL, currentLine, currentColumn,"<="));
+                    }
+                    else
+                    {
+                        String symbolLexeme = Character.toString(c);
+                        tokens.add(new Token(getSymbolType(symbolLexeme), TokenKind.SYMBOL, currentLine, currentColumn, symbolLexeme));
+                    }
+                }
+                else if (isSymbol(Character.toString(c))) {
                     String symbolLexeme = Character.toString(c);
                     tokens.add(new Token(getSymbolType(symbolLexeme), TokenKind.SYMBOL, currentLine, currentColumn, symbolLexeme));
-                } else if (isDigit(c)) {
+                }
+                else if (isDigit(c)) {
                     StringBuilder number = new StringBuilder();
                     int startColumn = currentColumn;
 

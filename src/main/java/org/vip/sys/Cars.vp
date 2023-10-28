@@ -1,7 +1,6 @@
 
-class Cars {
+module Cars {
    var titan : 10 * 20 - 2 and true;
-   object vehicle,jambu,lorence : Vehicle.class;
    method HelloWord {
       // if titan = "hello word" {
       //    return "hello world";
