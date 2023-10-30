@@ -1,14 +1,16 @@
 Vehicle container  {
-     var speed = 0;
-     __flush__{}
-     __destroy__{}
-     __init__ {
+     speed = 0;
+     flush {}
+     destroy{}
+     init {
      if speed == 0 {
        System.println("speed is not initialized , setting speed to 30");
        speed = 30;
      }
        System.println("hello world");
     }
+
+    set_speed {}
 
     some_method1 {
           System.println("not initiated properly");

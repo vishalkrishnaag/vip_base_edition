@@ -16,6 +16,7 @@ public class Parser {
     private final List<Symbol> eventMap;
     private int label = 1;
     private ConversionHelper conversionHelper;
+    boolean conditonal_method_call =false;
 
 
     public Parser(List<Token> tokens) {
@@ -60,13 +61,13 @@ public class Parser {
                 break;
                 // in case of container main() {}
             }
-
-            if (token.getType() == TokenType.VAR) {
+            if(token.getType()==TokenType.IDENTIFIER && nextToken().getType()==TokenType.ASSIGN||
+                    token.getType()==TokenType.IDENTIFIER && nextToken().getType()==TokenType.COMMA)
+            {
                 // should be a field
                 this.compileVariableDeclaration();
-
             }
-            else if(token.getType()==TokenType.IDENTIFIER)
+            else if(token.getType()==TokenType.IDENTIFIER && nextToken().getType()==TokenType.LBRACE)
             {
                 this.compileFunctionStatement();
             }
@@ -97,14 +98,18 @@ public class Parser {
                 // ramanan(word : "hello world");
                 if (nextToken().getType() == TokenType.LPAR) {
                     compileSubroutineCall();
-                } else if (nextToken().getType() == TokenType.DOT) {
+                }
+                else if (nextToken().getType() == TokenType.IF) {
+                    compileSubroutineCall();
+                }
+                else if (nextToken().getType() == TokenType.DOT) {
                     compileChainMethod();
                 } else if (nextToken().getType() == TokenType.ASSIGN) {
                     compileVariableAssign();
                 } else if (nextToken().getType() == TokenType.LBRACE) {
                     throw new VipCompilerException("vip does not support nested functions");
                 } else {
-                    throw new VipCompilerException("undefined operation received");
+                    throw new VipCompilerException("undefined operation received got "+nextToken().getType());
                 }
                 break;
             case WHILE:
@@ -141,6 +146,12 @@ public class Parser {
             throw new VipCompilerException("cannot invoke  field '"+output+"."+next.getLexme());
         }
         addEvent(getSymbol(event.CHAIN_METHOD_BEGIN, listOf(offset1,offset2,output)));
+        if (token.getType()==TokenType.IF)
+        {
+            this.conditonal_method_call = true;
+            this.compileIfStatement(false);
+            this.conditonal_method_call = false;
+        }
         compileExpressionList(true);
         expect(TokenType.SEMICOLON);
 //            System.out.println("chain : " + output);
@@ -152,16 +163,6 @@ public class Parser {
             advanceToken();
         }
     }
-
-    //"expected function name"
-    private void expect_var() throws VipCompilerException {
-        if (token.getType() == TokenType.VAR) {
-            advanceToken();
-        } else {
-            throw new VipCompilerException("expected var in variable declaration");
-        }
-    }
-
 
     private void expect(TokenType type, boolean strict) throws VipCompilerException {
         if (token.getType() == type) {
@@ -333,9 +334,8 @@ public class Parser {
 
     private void compileVariableDeclaration() throws VipCompilerException {
         addEvent(getSymbol(event.VAR_DECL_BEGIN, null));
-        expect_var(); // eat var
         List<String> varList = new ArrayList<>();
-        //var a,b,c = 10 like format
+        //a,b,c = 10 like format
         varList.add(token.getLexme());
         expect(TokenType.IDENTIFIER, true);
         while (token.getType() == TokenType.COMMA || token.getType() == TokenType.IDENTIFIER || token.getType() == TokenType.ASSIGN) {
@@ -411,7 +411,10 @@ public class Parser {
             }
         } else {
             this.compileExpressionList( false);
-            this.compileBlockStatement();
+            if (conditonal_method_call==false)
+            {
+                this.compileBlockStatement();
+            }
         }
         addEvent(getSymbol(event.IF_COND_END, null));
     }
@@ -427,6 +430,12 @@ public class Parser {
     private void compileSubroutineCall() throws VipCompilerException {
         addEvent(getSymbol(event.METHOD_CALL_BEGIN, listOf(token.getLexme())));
         expect(TokenType.IDENTIFIER);
+        if (token.getType()==TokenType.IF)
+        {
+            this.conditonal_method_call = true;
+            this.compileIfStatement(false);
+            this.conditonal_method_call = false;
+        }
         compileExpressionList( true);
         expect(TokenType.SEMICOLON);
         addEvent(getSymbol(event.METHOD_CALL_END, null));
@@ -639,7 +648,7 @@ public class Parser {
         expect(TokenType.LPAR, strict);
 
         while (currentToken < tokenizerOutput.size()) {
-            if (exitOnSee(TokenType.SEMICOLON, TokenType.LBRACE, TokenType.RPAR)) {
+            if (exitOnSee(TokenType.SEMICOLON, TokenType.LBRACE, TokenType.RPAR) || (this.conditonal_method_call && token.getType()==TokenType.LPAR)) {
                 break;
             }
 
@@ -681,65 +690,7 @@ public class Parser {
 
     private boolean isOperator(TokenType type) throws VipCompilerException {
         switch (type) {
-            case PLUS, MINUS, SLASH, AND, OR, EQUALS -> {
-                return true;
-            }
-            case LESS_THAN -> {
-                if (nextToken().getType() == TokenType.OR) {
-                    advanceToken(); // eat less_than
-                    advanceToken(); // eat or
-                    if (token.getType() == TokenType.EQUALS) {
-                        token.setLexme("less_than or equal to");
-                        token.setType(TokenType.LESS_THAN_EQ);
-                        token.setKind(TokenKind.KEYWORD);
-                        return true;
-                    } else {
-                        throw new VipCompilerException("expected equals in less_than or equals");
-                    }
-
-                } else if (nextToken().getType() == TokenType.EQUALS) {
-                    advanceToken();
-                    token.setLexme("less_than or equal to");
-                    token.setType(TokenType.LESS_THAN);
-                    token.setKind(TokenKind.KEYWORD);
-                    return true;
-                } else {
-                    return true;
-                }
-
-            }
-            case GREATER_THAN -> {
-                if (nextToken().getType() == TokenType.OR) {
-                    advanceToken(); // eat greater_than
-                    advanceToken(); // eat or
-                    if (token.getType() == TokenType.EQUALS) {
-                        token.setLexme("greater_than or equal to");
-                        token.setType(TokenType.GREATER_THAN_EQ);
-                        token.setKind(TokenKind.KEYWORD);
-                        return true;
-                    } else {
-                        throw new VipCompilerException("expected equals in less_than or equals");
-                    }
-
-                } else if (nextToken().getType() == TokenType.EQUALS) {
-                    advanceToken();
-                    token.setLexme("greater_than or equal to");
-                    token.setType(TokenType.GREATER_THAN_EQ);
-                    token.setKind(TokenKind.KEYWORD);
-                    return true;
-                } else {
-                    return true;
-                }
-            }
-            case ASSIGN, STAR -> {
-                return true;
-            }
-            case NOT -> {
-                if (nextToken().getType() == TokenType.EQUALS) {
-                    advanceToken();
-                    token.setLexme("not equals");
-                    token.setType(TokenType.NOT_EQUAL);
-                }
+            case PLUS, MINUS, SLASH, AND, OR, EQUALS,LESS_THAN,LESS_THAN_EQ ,GREATER_THAN_EQ,GREATER_THAN,ASSIGN, STAR,NOT,NOT_EQUAL -> {
                 return true;
             }
             default -> {

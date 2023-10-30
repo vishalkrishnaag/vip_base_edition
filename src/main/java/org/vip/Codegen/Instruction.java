@@ -37,5 +37,5 @@ public enum Instruction {
     jump_if_equal,
     jump_if_not_equal,
     register_rule,
-    register_field,
+    register_field, label_begin, label_end,
 }

@@ -11,6 +11,11 @@ public class Pair<K,V> {
         this.value = value;
     }
 
+    public Pair() {
+        this.key = null;
+        this.value = null;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) {

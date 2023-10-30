@@ -11,7 +11,6 @@ public enum event {
     ELSE_BEGIN,
     ELSE_END,
     CLASS_DECL,
-    SHARED_CLASS_DECL,
     CLASS_END,
     METHOD_DECL_BEGIN,
     METHOD_DECL_END,
@@ -41,9 +40,5 @@ public enum event {
     EXPR_LIST_END,
     VAR_MAPPING,
     EXTENDS_EVENT,
-    CLASS_INVOKE_BEGIN,
-    RERENCE_CLASS,
-    TARGET_CLASS,
-    CLASS_INVOKE_END,
     SELF_FIELD, // self.a format
 }

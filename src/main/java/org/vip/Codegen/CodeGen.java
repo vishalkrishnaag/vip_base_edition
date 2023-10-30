@@ -14,9 +14,9 @@ import java.util.*;
 public class CodeGen {
     /*
      *
-     * class_name -> id , shared = true
+     * class_name -> id
      * */
-    List<Tripples<String, Integer, Boolean>> classList;
+    List<Pair<String, Integer>> classList;
     /*
      *
      * filedName,fieldId ,class_id
@@ -27,12 +27,6 @@ public class CodeGen {
      * methodName -> methodId , classId
      * */
     List<Tripples<String, Integer, Integer>> methodList;
-    /*
-     *   objectName , ObjectId, ClassId
-     *
-     *
-     */
-    List<Tripples<String, Integer, Integer>> ObjectList;
     private int currentEvent;
 
     private String currentClassName;
@@ -45,23 +39,17 @@ public class CodeGen {
     private final List<Symbol> events;
     private Map<Integer, String> builtinMethods;
     private int mainFound = 0;
-    private int objectIndex = 0;
     private Integer currentClassId = null;
-    private Boolean isCurrentClassShared = null;
-    private boolean paddingEnabled = false;
-    private boolean write_count;
+    private Integer write_count=0;
     private int label;
     private ConversionHelper conversionHelper;
 
     public CodeGen(List<Symbol> events) throws Exception {
         this.events = events;
-        objectIndex = 0;
         label=0;
-        write_count =false;
         classList = new ArrayList<>();
         fieldList = new ArrayList<>();
         methodList = new ArrayList<>();
-        ObjectList = new ArrayList<>();
         conversionHelper = new ConversionHelper();
         System.out.println("total " + events.size() + " events");
         //implement write logic here
@@ -75,7 +63,6 @@ public class CodeGen {
             throw new VipCompilerException("Multiple Main Declartion found");
         }
         this.Generator();
-        file.close();
 
     }
 
@@ -83,7 +70,7 @@ public class CodeGen {
         int currentField = 0;
         int currentMethod = 0;
         int currentClassId = 0;
-        classList.add(create_class("System", 0, false));
+        classList.add(create_class("System", 0));
         fieldList.add(create_Field("in", 0, 0));
         methodList.add(create_tripple("println", 0, 0));
         methodList.add(create_tripple("print", 1, 0));
@@ -93,17 +80,11 @@ public class CodeGen {
         for (int i = 0; i < events.size(); i++) {
             if (events.get(i).eventType == event.CLASS_DECL) {
                 is_class_exist(events.get(i).Elements.get(0));
-                classList.add(create_class(events.get(i).Elements.get(0), currentClassId, false));
+                classList.add(create_class(events.get(i).Elements.get(0), currentClassId));
                 currentClassName = events.get(i).Elements.get(0);
                 currentClassId = currentClassId + 1;
                 currentField = 0;
                 currentMethod = 0;
-            } else if (events.get(i).eventType == event.SHARED_CLASS_DECL) {
-                is_class_exist(events.get(i).Elements.get(0));
-                // to
-                classList.add(create_class(events.get(i).Elements.get(0), currentClassId, true));
-                currentClassName = events.get(i).Elements.get(0);
-                currentClassId = currentClassId + 1;
             } else if (events.get(i).eventType == event.METHOD_DECL_BEGIN) {
                 if (events.get(i).Elements.get(0).equals("main") || events.get(i).Elements.get(0).equals("Main")) {
                     mainFound = mainFound + 1;
@@ -139,17 +120,28 @@ public class CodeGen {
     @Contract(mutates = "this")
     private @NotNull Integer getLabel() {
         label++;
-//        return "L" + label;
         return  label;
     }
 
     private void emitData(int data) throws IOException {
-        this.file.println(data);
-        this.write_count=true;
+        if(this.write_count==50)
+        {
+            this.file.print('\n');
+            this.write_count=0;
+        }
+        else {
+            this.file.print(data+" ");
+            this.write_count++;
+        }
+
     }
     private void emitInstruction(Instruction data) throws IOException {
-        this.file.println("@"+data.ordinal());
-        this.write_count=true;
+        if(this.write_count==50)
+        {
+            this.file.print('\n');
+            this.write_count=0;
+        }
+        this.file.print("@"+data.ordinal()+" ");
     }
 
     private void Generator() throws Exception {
@@ -157,24 +149,15 @@ public class CodeGen {
             if (cevent.eventType == event.CLASS_DECL) {
                 currentClassId = getClassId(cevent.Elements.get(0));
                 System.out.println("analyzing '" + cevent.Elements.get(0) + "'.class ");
-                if (currentClassId==1)
-                {
-                    file = new PrintWriter("src/test/java/main.vpx");
-                }
-                else
-                {
-                    file = new PrintWriter("src/test/java/"+currentClassId+".vpx");
-                }
-
+                file = new PrintWriter("src/test/java/"+currentClassId+".vpx");
                 currentClassName=cevent.Elements.get(0);
-                isCurrentClassShared = false;
                 GenerateCodeForClassDecl();
+                file.close();
             }
             else {
                 throw new RuntimeException("Error in code analysis got " + cevent.eventType);
             }
         }
-        emitInstruction(Instruction.call_main);
     }
 
     private void is_class_exist(String s) throws VipCompilerException {
@@ -182,21 +165,21 @@ public class CodeGen {
             throw new NullPointerException("class Name is Null");
         }
 
-        for (Tripples<String, Integer, Boolean> tripples : classList) {
-            if (tripples.contains(s)) {
+        for (Pair<String, Integer> pair : classList) {
+            if (pair.contains(s)) {
                 throw new VipCompilerException("class '" + s + "' Already Declared");
             }
         }
     }
 
-    private Tripples getClass(String s) throws VipCompilerException {
+    private Pair getClass(String s) throws VipCompilerException {
         if (s == null) {
             throw new NullPointerException("class Name is Null");
         }
-        Tripples t = null;
-        for (Tripples<String, Integer, Boolean> tripples : classList) {
-            if (tripples.contains(s)) {
-                t = tripples;
+        Pair t = null;
+        for (Pair<String, Integer> pair : classList) {
+            if (pair.contains(s)) {
+                t = pair;
                 break;
             }
         }
@@ -223,9 +206,9 @@ public class CodeGen {
             throw new NullPointerException("class Name is Null");
         }
         Integer id = null;
-        for (Tripples<String, Integer, Boolean> tripples : classList) {
-            if (tripples.contains(s)) {
-                id = tripples.value;
+        for (Pair<String, Integer> pair : classList) {
+            if (pair.contains(s)) {
+                id = pair.value;
                 break;
             }
         }
@@ -235,8 +218,7 @@ public class CodeGen {
         return id;
     }
 
-    private Pair<String, Integer>
-    create_pair
+    private Pair<String, Integer> create_pair
             (String s, int currentClassId) {
         return new Pair<String, Integer>(s, currentClassId);
     }
@@ -254,24 +236,11 @@ public class CodeGen {
     }
 
     private void GenerateCodeForClassDecl() throws Exception {
-        if (isCurrentClassShared == null) {
-            throw new VipCompilerException("class Not found");
-        }
-        if (isCurrentClassShared) {
-            expect(event.SHARED_CLASS_DECL, true);
-        } else {
-            ;
-            expect(event.CLASS_DECL, true);
-        }
-
-        emitInstruction(Instruction.begin);
-
+        expect(event.CLASS_DECL, true);
         while (cevent.eventType != event.CLASS_END) {
             if (cevent.eventType == event.VAR_DECL_BEGIN) {
                 GenerateCodeForVarDecl();
-            } else if (cevent.eventType == event.CLASS_INVOKE_BEGIN) {
-                GenerateCodeForClassInvoking();
-            } else if (cevent.eventType == event.METHOD_DECL_BEGIN) {
+            }  else if (cevent.eventType == event.METHOD_DECL_BEGIN) {
                 GenerateCodeForMethodDecl();
             } else if (cevent.eventType == event.EXTENDS_EVENT) {
                 throw new VipCompilerException("extends not supported in vip");
@@ -279,30 +248,9 @@ public class CodeGen {
                 throw new VipCompilerException("unsupported data type got " + cevent.eventType);
             }
         }
-        emitInstruction(Instruction.end);
         expect(event.CLASS_END);
     }
 
-    private void GenerateCodeForClassInvoking() throws VipCompilerException, IOException {
-        expect(event.CLASS_INVOKE_BEGIN);
-        List<String> ref_class = cevent.Elements;
-        expect(event.RERENCE_CLASS);
-        String taget_class = cevent.Elements.get(0);
-        expect(event.TARGET_CLASS);
-        for (String objectName : ref_class) {
-            int RefClassId = getClassId(taget_class);
-            Tripples cls = getClass(taget_class);
-            if (cls.hasValue1(true)) {
-                throw new VipCompilerException("cannot invoke a shared class '" + taget_class + "' in vip ");
-            }
-            ObjectList.add(create_Object(objectName, objectIndex, RefClassId));
-            emitData(objectIndex);
-            emitData(RefClassId);
-            emitInstruction(Instruction.make_obj);
-            objectIndex++;
-        }
-        expect(event.CLASS_INVOKE_END);
-    }
 
     private void GenerateCodeForExtendClasses() throws VipCompilerException {
         Symbol symbol = cevent;
@@ -319,8 +267,6 @@ public class CodeGen {
         int index = getMethodId(methodName,currentClassId);
         emitData(index);
         emitInstruction( Instruction.method_begin);
-        this.paddingEnabled = true;
-        this.write_count =false;
         GenerateCodeForBlockStatements();
         //not checking it now
 //        if(!write_count)
@@ -328,7 +274,7 @@ public class CodeGen {
 //            throw new VipCompilerException("method '"+methodName+"' has no body either comment it else remove it");
 //        }
         expect(event.METHOD_DECL_END);
-        this.paddingEnabled = false;
+        emitInstruction( Instruction.method_end);
     }
 
     private Tripples<String, Integer, Integer> create_tripple(String methodName, Integer methodId, Integer classId) {
@@ -346,9 +292,9 @@ public class CodeGen {
                 (fieldName, fieldId, classId);
     }
 
-    private Tripples<String, Integer, Boolean> create_class(String className, Integer classId, Boolean isShared) {
-        return new Tripples<>
-                (className, classId, isShared);
+    private Pair<String, Integer> create_class(String className, Integer classId) {
+        return new Pair<>
+                (className, classId);
     }
 
     private void expect(event type) throws VipCompilerException {
@@ -397,7 +343,6 @@ public class CodeGen {
         switch (cevent.eventType) {
             case WHILE_BEGIN -> GenerateCodeForWhileStatements();
             case VAR_ASSIGN_BEGIN -> GenerateCodeForVarAssignment();
-//            case CHAIN_STMT_BEGIN -> GenerateCodeForChainStatements();
             case CHAIN_METHOD_BEGIN -> GenerateCodeForChainMethodCall();
             case METHOD_CALL_BEGIN -> GenerateCodeForMethodCall();
             case RETURN_BEGIN -> GenerateCodeForReturnStatement();
@@ -430,78 +375,44 @@ public class CodeGen {
         expect(event.RETURN_END);
     }
 
-    private void GenerateCodeForChainStatements() throws Exception {
-        expect(event.CHAIN_STMT_BEGIN);
-        if (cevent.eventType == event.METHOD_CALL_BEGIN) {
-            GenerateCodeForMethodCall();
-        }
-        if (cevent.eventType == event.EXPR_LIST_BEGIN) {
-            // a.b.c.d();
-//            GenerateCodeForExpressionList();
-        }
-        expect(event.CHAIN_STMT_END);
-    }
-
     private void GenerateCodeForChainMethodCall() throws Exception {
         String referenceCls = cevent.Elements.get(0);
-        String caller = cevent.Elements.get(1);
-        String callMethod = cevent.Elements.get(2);
+        String caller_method = cevent.Elements.get(1);
         expect(event.CHAIN_METHOD_BEGIN);
-        Tripples<String, Integer, Integer> t = null;
-        Boolean isObject = false;
-        boolean isShared = false;
-        for (Tripples<String, Integer, Boolean> tripples : classList) {
-            if (tripples.contains(referenceCls)) {
-                t = new Tripples<>();
-                t.key = tripples.key;
-                t.value = tripples.value;
-                isShared = tripples.value1;
+        Pair<String, Integer> t = null;
+        for (Pair<String, Integer> pair : classList) {
+            if (pair.contains(referenceCls)) {
+                t = new Pair<>();
+                t.key = pair.key;
+                t.value = pair.value;
                 break;
             }
         }
-        if (t == null) {
-            for (Tripples<String, Integer, Integer> tripples : ObjectList) {
-                if (tripples.contains(referenceCls)) {
-                    t = new Tripples<>();
-                    t = tripples;
-                    isObject = true;
-                    break;
-                }
-            }
-        }
-        if (t == null) {
-            throw new VipCompilerException("Class or object '" + referenceCls + "' not found");
-        }
-        if (isObject) {
-            // an invoked objec.method(); format
-            if (isShared) {
-                throw new VipCompilerException("cannot invoke a shared class use directly in  " + callMethod);
-            }
-            // get classId from object and get methodId
-            int methodId = getMethodId(caller, t.value1);
-            /*
-             *
-             * callling callMethodObject with methodId and objectId so it change datasource to the method
-             * value -> methodId
-             * value1 -> objectId
-             */
-            GenerateCodeForExpressionList(t.value1);
-            emitData(methodId);
-            emitData(t.value);
-            emitInstruction(Instruction.call_obj);
-        } else {
-            // shared class.method()
-            GenerateCodeForExpressionList(t.value);
-            int methodId = getMethodId(caller, t.value);
+//        if (cevent.eventType==event.IF_COND_BEGIN)
+//        {
+//            int labelId= this.GenerateCodeForMethodCallIfStatements();
+//            emitData(labelId);
+//            // todo :need to add fix in the dummy workflow
+//            emitInstruction(Instruction.jump_if_equal);
+//        }
+        GenerateCodeForExpressionList(t.value);
+            int methodId = getMethodId(caller_method, t.value);
             emitData(methodId);
             emitInstruction(Instruction.call);
-        }
         expect(event.CHAIN_METHOD_END);
     }
 
     private void GenerateCodeForMethodCall() throws Exception {
         Symbol cevent1 = cevent;
         expect(event.METHOD_CALL_BEGIN);
+//        if (cevent.eventType==event.IF_COND_BEGIN)
+//        {
+//           int labelId= this.GenerateCodeForMethodCallIfStatements();
+//           emitData(labelId);
+//           // todo :need to add fix in the dummy workflow
+//           emitInstruction(Instruction.jump_if_equal);
+//        }
+
         GenerateCodeForExpressionList(currentClassId);
         expect(event.METHOD_CALL_END);
         emitData(getMethodId(cevent1.Elements.get(0), currentClassId));
@@ -753,6 +664,18 @@ public class CodeGen {
             throw new VipCompilerException("if condition is not good");
         }
         expect(event.IF_COND_END);
+    }
+
+    private int GenerateCodeForMethodCallIfStatements() throws Exception {
+        expect(event.IF_COND_BEGIN);
+        Integer labelId = getLabel();
+        emitData(labelId);
+        emitInstruction(Instruction.label_begin);
+        emitInstruction(Instruction.jump_if_equal);
+            GenerateCodeForExpressionList(currentClassId);
+        emitInstruction(Instruction.label_end);
+        expect(event.IF_COND_END);
+        return labelId;
     }
 
     private void GenerateCodeForWhileStatements() throws Exception {
