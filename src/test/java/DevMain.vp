@@ -1,23 +1,13 @@
 
-Cars container {
    titan = 10 * 20 - 2 and true;
    speed = 3;
    ok = "ok";
 
-    HelloWord {
+   HelloWord
       titan = titan + 1;
       return titan;
-   }
+   end
 
-   Vehicle {
-    if ok=="ok" { Vehicle.init(); }
-     Vehicle.flush();
-     Vehicle.destroy();
-     Vehicle.set_speed(speed = self.speed * 10)
-   }
-
-     main {
+   main
      HelloWord(titan = 30 , titan = 40);
-     Vehicle();
-   }
-}
+   end

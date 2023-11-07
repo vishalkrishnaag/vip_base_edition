@@ -1,21 +1,18 @@
-shared class Something { 
-    var example : "hello world"+ "hello damodar";
-    var ramu : if example equals "hello" { return "hello kids"};
-    var titan : "something new" or "something else";
-    object car : Cars.class;
-    object car1 : Cars.class;
-    method Main {
-     ramu : System.scanln(in:"write something good");
-     titan :  car1.HelloWord(titan:"hello world");
-     ramu : car.HelloWord(titan : "princes of titan and "+self.titan);
-     if ramu equals "hello world" 
+example = "hello world"+ "hello cardamom";
+ram = if example equals "hello" { return "hello kids"};
+titan = "something new" or "something else";
+
+Main
+     ram = System.scan(in:"write something good");
+     titan =  Cars.HelloWord(titan="hello world");
+     ram = Cars.HelloWord(titan = "princes of titan and "+self.titan);
+     if ram equals "hello world"
      {
-        System.println(in : self.ramu);
+        System.println(in = self.ram);
      }
       
-      ramu : if true equals true { return 10 } else { return 100}
-      ramu : ramu + 10 * 200 - 30 + 3 / 2;
-      System.println(in : self.example);
-      System.println(in : self.ramu);
-     }
-}
+      ram = if true equals true { return 10 } else { return 100}
+      ram = ram + 10 * 200 - 30 + 3 / 2;
+      System.println(in = self.example);
+      System.println(in = self.ram);
+end

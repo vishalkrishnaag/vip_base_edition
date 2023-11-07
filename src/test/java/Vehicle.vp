@@ -1,28 +1,26 @@
-Vehicle container  {
-     speed = 0;
-     flush {}
-     destroy{}
-     init {
-     if speed == 0 {
+ speed = 0;
+  flush end
+  destroy end
+  init
+    if speed == 0 {
        System.println("speed is not initialized , setting speed to 30");
        speed = 30;
      }
        System.println("hello world");
-    }
+   end
 
-    set_speed {}
+    set_speed end
 
-    some_method1 {
+    some_method1
           System.println("not initiated properly");
           System.println("not initiated properly");
-    }
+    end
 
-    apply_break  {
+    apply_break
        System.print("break is applied");
-    }
+    end
 
-    increment_speed  {
+    increment_speed
        speed = self.speed + 1 ;
        System.println("speed increased now speed is "+self.speed);
-    }
-}
+    end

@@ -1,11 +1,5 @@
-
-module Cars {
-   var titan : 10 * 20 - 2 and true;
-   method HelloWord {
-      // if titan = "hello word" {
-      //    return "hello world";
-      // }
-      vehicle.ApplyBrake();
+titan = 10 * 20 - 2 and true;
+HelloWord
+   vehicle.ApplyBrake();
    return titan;
-   }
-}
+end
