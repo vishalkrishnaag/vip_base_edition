@@ -1,4 +1,5 @@
 package org.vip.Parser;
+
 import org.vip.Exception.VipCompilerException;
 import org.vip.Lexer.TokenKind;
 import org.vip.Memmory.Symbol;
@@ -16,20 +17,21 @@ public class Parser {
     private final List<Symbol> eventMap;
     private int label = 1;
     private ConversionHelper conversionHelper;
-    boolean conditonal_method_call =false;
+    boolean conditonal_method_call = false;
 
 
-    public Parser(List<Token> tokens) {
+    public Parser(List<Token> tokens, String filename) {
         tokenizerOutput = new ArrayList<>(tokens);
         currentToken = 0;
         this.eventMap = new ArrayList<>();
         token = new Token();
-        containerName = "";
-      conversionHelper=new ConversionHelper();
+        containerName = filename;
+        conversionHelper = new ConversionHelper();
     }
 
 
     public List<Symbol> getCompilationEngineOutput() throws VipCompilerException {
+        token = tokenizerOutput.get(0);
         compile();
         advanceToken();
         if (token.getType() != TokenType.EOL) {
@@ -41,41 +43,22 @@ public class Parser {
 
 
     private void compile() throws VipCompilerException {
-        advanceToken();
-        String containerName = tokenizerOutput.get(0).getLexme();
-        if(token.getType()==TokenType.CONTAINER)
-        {
-            eventMap.add(new Symbol(event.CLASS_DECL, listOf(containerName)));
-            advanceToken();
-        }
-        else
-        {
-            throw new VipCompilerException("Expected a container declaration  got "+token.getType());
-        }
-
-        expect(TokenType.LBRACE, true);
-
+        eventMap.add(new Symbol(event.CLASS_DECL, listOf(containerName)));
         while (currentToken < tokenizerOutput.size()) {
 
-            if (exitOnSee(TokenType.RBRACE)) {
+            if (token.getType()==TokenType.EOL) {
                 break;
                 // in case of container main() {}
             }
-            if(token.getType()==TokenType.IDENTIFIER && nextToken().getType()==TokenType.ASSIGN||
-                    token.getType()==TokenType.IDENTIFIER && nextToken().getType()==TokenType.COMMA)
-            {
+            if (token.getType() == TokenType.IDENTIFIER && nextToken().getType() == TokenType.ASSIGN ||
+                    token.getType() == TokenType.IDENTIFIER && nextToken().getType() == TokenType.COMMA) {
                 // should be a field
                 this.compileVariableDeclaration();
-            }
-            else if(token.getType()==TokenType.IDENTIFIER && nextToken().getType()==TokenType.LBRACE)
-            {
+            } else if (token.getType() == TokenType.DEF && nextToken().getType() == TokenType.IDENTIFIER) {
                 this.compileFunctionStatement();
-            }
-            else  if(token.getType()==TokenType.OBJECT_T)
-            {
+            } else if (token.getType() == TokenType.OBJECT_T) {
                 throw new VipCompilerException("unsupported datatype inside container " + token.getType());
-            }
-            else {
+            } else {
                 throw new VipCompilerException("unsupported datatype inside container , expected variable or method " + token.getType());
             }
 
@@ -84,32 +67,36 @@ public class Parser {
     }
 
     private void compileFunctionStatement() throws VipCompilerException {
+        advanceToken(); // eat def
         addEvent(event.METHOD_DECL_BEGIN, listOf(token.getLexme()));
         advanceToken(); //  eat func_name
-        compileBlockStatement();
+        if(token.getType()!=TokenType.END)
+        {
+            compileMethodBlockStatement();
+        }
+        else
+        {
+            advanceToken();
+        }
         addEvent(event.METHOD_DECL_END, null);
     }
 
     private void compileStatements() throws VipCompilerException {
         switch (token.getType()) {
-            case VAR:
-                throw new VipCompilerException("vip does not support creating variables inside a method");
             case IDENTIFIER:
                 // ramanan(word : "hello world");
                 if (nextToken().getType() == TokenType.LPAR) {
                     compileSubroutineCall();
-                }
-                else if (nextToken().getType() == TokenType.IF) {
+                } else if (nextToken().getType() == TokenType.IF) {
                     compileSubroutineCall();
-                }
-                else if (nextToken().getType() == TokenType.DOT) {
+                } else if (nextToken().getType() == TokenType.DOT) {
                     compileChainMethod();
                 } else if (nextToken().getType() == TokenType.ASSIGN) {
                     compileVariableAssign();
                 } else if (nextToken().getType() == TokenType.LBRACE) {
                     throw new VipCompilerException("vip does not support nested functions");
                 } else {
-                    throw new VipCompilerException("undefined operation received got "+nextToken().getType());
+                    throw new VipCompilerException("undefined operation received got " + nextToken().getType());
                 }
                 break;
             case WHILE:
@@ -119,11 +106,13 @@ public class Parser {
                 compileReturnStatement();
                 break;
             case IF:
-                compileIfStatement( false);
+                compileIfStatement(false);
                 break;
             case ELSE:
                 this.compileIfStatement(true);
             case RBRACE:
+            case EOL:
+            case END:
                 break;
             case CONSTRUCTOR:
                 throw new VipCompilerException("vip does not support nested container");
@@ -133,21 +122,19 @@ public class Parser {
     }
 
     private void compileChainMethod() throws VipCompilerException {
-        String output=token.getLexme()+".";
+        String output = token.getLexme() + ".";
         String offset1 = token.getLexme();
         expect(TokenType.IDENTIFIER);
         expect(TokenType.DOT);
-        output+= token.getLexme();
+        output += token.getLexme();
         String offset2 = token.getLexme();
         expect(TokenType.IDENTIFIER);
         Token next = nextToken();
-        if(token.getType()==TokenType.DOT && next.getType()==TokenType.IDENTIFIER)
-        {
-            throw new VipCompilerException("cannot invoke  field '"+output+"."+next.getLexme());
+        if (token.getType() == TokenType.DOT && next.getType() == TokenType.IDENTIFIER) {
+            throw new VipCompilerException("cannot invoke  field '" + output + "." + next.getLexme());
         }
-        addEvent(getSymbol(event.CHAIN_METHOD_BEGIN, listOf(offset1,offset2,output)));
-        if (token.getType()==TokenType.IF)
-        {
+        addEvent(getSymbol(event.CHAIN_METHOD_BEGIN, listOf(offset1, offset2, output)));
+        if (token.getType() == TokenType.IF) {
             this.conditonal_method_call = true;
             this.compileIfStatement(false);
             this.conditonal_method_call = false;
@@ -155,7 +142,7 @@ public class Parser {
         compileExpressionList(true);
         expect(TokenType.SEMICOLON);
 //            System.out.println("chain : " + output);
-        addEvent(getSymbol(event.CHAIN_METHOD_END,null));
+        addEvent(getSymbol(event.CHAIN_METHOD_END, null));
     }
 
     private void expect(TokenType type) {
@@ -178,7 +165,8 @@ public class Parser {
                     case IDENTIFIER -> err = "identifier Expected";
                     case CONTAINER -> err = "container Expected";
                     case DOT -> err = "dot expected in this.expression ";
-                    default -> {}
+                    default -> {
+                    }
                 }
                 throw new VipCompilerException(err);
             }
@@ -186,13 +174,14 @@ public class Parser {
         }
     }
 
-    private void expect(TokenType type,String error) throws VipCompilerException {
+    private void expect(TokenType type, String error) throws VipCompilerException {
         if (token.getType() == type) {
             advanceToken();
         } else {
-                throw new VipCompilerException(error);
+            throw new VipCompilerException(error);
         }
     }
+
     private void compileBlockStatement() throws VipCompilerException {
         addEvent(event.BLOCK_BEGIN, null);
         expect(TokenType.LBRACE);
@@ -206,6 +195,19 @@ public class Parser {
         expect(TokenType.RBRACE);
         addEvent(event.BLOCK_END, null);
     }
+
+    private void compileMethodBlockStatement() throws VipCompilerException {
+        addEvent(event.BLOCK_BEGIN, null);
+        while (currentToken < tokenizerOutput.size()) {
+            this.compileStatements();
+            if (exitOnSee(TokenType.END)) {
+                break;
+            }
+        }
+        expect(TokenType.END);
+        addEvent(event.BLOCK_END, null);
+    }
+
 
     public static String convertListToString(List<String> strings) {
         StringBuilder stringBuilder = new StringBuilder();
@@ -246,7 +248,7 @@ public class Parser {
             if (token.getType() == TokenType.LPAR) {
                 // a.b.c.d.method call
                 addEvent(getSymbol(event.METHOD_CALL_BEGIN, listOf(output)));
-                this.compileExpressionList( true);
+                this.compileExpressionList(true);
                 addEvent(getSymbol(event.METHOD_CALL_END, null));
             } else if (token.getType() == TokenType.ASSIGN) {
                 advanceToken();
@@ -293,7 +295,7 @@ public class Parser {
             if (token.getType() == TokenType.LPAR) {
                 // a.b.c.d.method call
                 addEvent(getSymbol(event.METHOD_CALL_BEGIN, listOf(output)));
-                this.compileExpressionList( true);
+                this.compileExpressionList(true);
                 addEvent(getSymbol(event.METHOD_CALL_END, null));
             }
             System.out.println("out : " + output);
@@ -401,7 +403,7 @@ public class Parser {
             if (token.getType() == TokenType.IF) {
                 // else if case
                 addEvent(getSymbol(event.ELIF_BEGIN, null));
-                this.compileIfStatement( false);
+                this.compileIfStatement(false);
                 addEvent(getSymbol(event.ELIF_END, null));
             } else {
                 // else case
@@ -410,9 +412,8 @@ public class Parser {
                 addEvent(getSymbol(event.ELSE_END, null));
             }
         } else {
-            this.compileExpressionList( false);
-            if (conditonal_method_call==false)
-            {
+            this.compileExpressionList(false);
+            if (conditonal_method_call == false) {
                 this.compileBlockStatement();
             }
         }
@@ -430,13 +431,12 @@ public class Parser {
     private void compileSubroutineCall() throws VipCompilerException {
         addEvent(getSymbol(event.METHOD_CALL_BEGIN, listOf(token.getLexme())));
         expect(TokenType.IDENTIFIER);
-        if (token.getType()==TokenType.IF)
-        {
+        if (token.getType() == TokenType.IF) {
             this.conditonal_method_call = true;
             this.compileIfStatement(false);
             this.conditonal_method_call = false;
         }
-        compileExpressionList( true);
+        compileExpressionList(true);
         expect(TokenType.SEMICOLON);
         addEvent(getSymbol(event.METHOD_CALL_END, null));
     }
@@ -470,15 +470,15 @@ public class Parser {
             if (exitOnSee(TokenType.SEMICOLON, TokenType.RBRACE, TokenType.LBRACE)) {
                 return;
             }
-                // a = 10 format
+            // a = 10 format
 
-                    // a : b will be valid
+            // a : b will be valid
                     /* a[i] : b is invalid in vip if you want to
                     do it will be like var a : array()
                                            a.assign(i,b)
                      */
 
-                compileTerm();
+            compileTerm();
         }
 
         addEvent(getSymbol(event.EXPR_END, null));
@@ -551,17 +551,14 @@ public class Parser {
                 } else if (nextToken().getType() == TokenType.DOT) {
                     this.compileChainMethod();
                     break;
-                }
-                else if(nextToken().getType()==TokenType.ASSIGN){
+                } else if (nextToken().getType() == TokenType.ASSIGN) {
                     compileVariableAssign();
                     break;
-                }
-                else if(isOperator(nextToken().getType())){
+                } else if (isOperator(nextToken().getType())) {
                     addEvent(getSymbol(event.VAR_MAPPING, listOf(token.getLexme())));
                     advanceToken();
                     break;
-                }
-                else{
+                } else {
                     addEvent(getSymbol(event.VAR_MAPPING, listOf(token.getLexme())));
                     advanceToken();
                     break;
@@ -581,7 +578,7 @@ public class Parser {
                 this.compileIfStatement(false);
                 break;
             case LPAR:
-                this.compileExpressionList( true);
+                this.compileExpressionList(true);
             case NOT:
                 if (nextToken().getType() == TokenType.EQUALS) {
                     advanceToken();
@@ -597,16 +594,16 @@ public class Parser {
                 if (token.getType() == TokenType.RBRACE || token.getType() == TokenType.SEMICOLON) {
                     return;
                 }
-                throw new VipCompilerException ("unknown token " + token.getType());
+                throw new VipCompilerException("unknown token " + token.getType());
         }
         addEvent(getSymbol(event.TERM_END, null));
     }
 
     private void compileSelfStatement() throws VipCompilerException {
         advanceToken(); // eat self
-        expect(TokenType.DOT,"expected dot in self");
+        expect(TokenType.DOT, "expected dot in self");
         addEvent(getSymbol(event.SELF_FIELD, listOf(token.getLexme())));
-        expect(TokenType.IDENTIFIER,"expected self.field name");
+        expect(TokenType.IDENTIFIER, "expected self.field name");
     }
 
     private void compileVarStaticExpr() throws VipCompilerException {
@@ -616,12 +613,10 @@ public class Parser {
                     throw new VipCompilerException("A Field must be static  does not contain any method calls");
                 } else if (nextToken().getType() == TokenType.DOT) {
                     throw new VipCompilerException("A Field must be static  does not contain.chain.statements");
-                }
-                else if(isOperator(nextToken().getType())){
+                } else if (isOperator(nextToken().getType())) {
                     throw new VipCompilerException("A Field must be static  does not contain any expressions");
-                }
-                else {
-                    throw new VipCompilerException("unknown operation on "+token.getType()+" : "+token.getLexme());
+                } else {
+                    throw new VipCompilerException("unknown operation on " + token.getType() + " : " + token.getLexme());
                 }
             case INT, TRUE, FALSE, NULL_T:
                 addEvent(getSymbol(event.STATIC_FILED, listOf(token.getLexme(), token.getType().toString())));
@@ -632,7 +627,7 @@ public class Parser {
                 advanceToken();
                 break;
             default:
-                throw new VipCompilerException ("Invalid Operation on Field , got " + token.getType());
+                throw new VipCompilerException("Invalid Operation on Field , got " + token.getType());
         }
     }
 
@@ -648,7 +643,7 @@ public class Parser {
         expect(TokenType.LPAR, strict);
 
         while (currentToken < tokenizerOutput.size()) {
-            if (exitOnSee(TokenType.SEMICOLON, TokenType.LBRACE, TokenType.RPAR) || (this.conditonal_method_call && token.getType()==TokenType.LPAR)) {
+            if (exitOnSee(TokenType.SEMICOLON, TokenType.LBRACE, TokenType.RPAR) || (this.conditonal_method_call && token.getType() == TokenType.LPAR)) {
                 break;
             }
 
@@ -690,7 +685,7 @@ public class Parser {
 
     private boolean isOperator(TokenType type) throws VipCompilerException {
         switch (type) {
-            case PLUS, MINUS, SLASH, AND, OR, EQUALS,LESS_THAN,LESS_THAN_EQ ,GREATER_THAN_EQ,GREATER_THAN,ASSIGN, STAR,NOT,NOT_EQUAL -> {
+            case PLUS, MINUS, SLASH, AND, OR, EQUALS, LESS_THAN, LESS_THAN_EQ, GREATER_THAN_EQ, GREATER_THAN, ASSIGN, STAR, NOT, NOT_EQUAL -> {
                 return true;
             }
             default -> {

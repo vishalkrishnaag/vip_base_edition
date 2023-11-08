@@ -1,13 +1,12 @@
-
-   titan = 10 * 20 - 2 and true;
-   speed = 3;
+titan = 10 * 20 - 2 and true;
+speed = 3;
    ok = "ok";
 
-   HelloWord
+  def HelloWord
       titan = titan + 1;
       return titan;
    end
 
-   main
+  def main
      HelloWord(titan = 30 , titan = 40);
-   end
+  end

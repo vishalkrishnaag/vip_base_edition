@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::io::{self, BufRead};
 use std::str::FromStr;
 use std::fmt;
-
+// @36 20 10 @18 @2 @37 0 @12
 #[derive(Clone, PartialEq)]
 enum CellType {
     Data,
