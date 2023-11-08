@@ -4,18 +4,18 @@ import java.util.*;
 
 
 public class Tokenizer {
-    private final ArrayList<String> codeLines;
+    private final Scanner input;
     private int currentLine;
     private final int currentColumn;
     private final Map<String, TokenType> symbolMap;
     private final Map<String, TokenType> keywordMap;
 
-    public Tokenizer(ArrayList<String> input) {
+    public Tokenizer(Scanner input) {
         currentLine = 0;
         currentColumn = 0;
         symbolMap = new HashMap<>();
         keywordMap = new HashMap<>();
-        this.codeLines = input;
+        this.input = input;
         initializeSymbolMap();
         initializeKeywordMap();
     }
@@ -48,7 +48,6 @@ public class Tokenizer {
     }
 
     private void initializeKeywordMap() {
-        keywordMap.put("var", TokenType.VAR);
         keywordMap.put("and", TokenType.AND);
         keywordMap.put("or", TokenType.OR);
         keywordMap.put("extends", TokenType.EXTENDS);
@@ -68,6 +67,7 @@ public class Tokenizer {
         keywordMap.put("if", TokenType.IF);
         keywordMap.put("else", TokenType.ELSE);
         keywordMap.put("when", TokenType.WHEN);
+        keywordMap.put("def", TokenType.DEF);
         keywordMap.put("end", TokenType.END);
         keywordMap.put("while", TokenType.WHILE);
         keywordMap.put("foreach", TokenType.FOR_EACH);
@@ -76,7 +76,6 @@ public class Tokenizer {
         keywordMap.put("greater_than",TokenType.GREATER_THAN);
         keywordMap.put("less_than",TokenType.LESS_THAN);
         keywordMap.put("Object",TokenType.OBJECT_T);
-        keywordMap.put("object",TokenType.OBJECT_T);
         keywordMap.put("self",TokenType.SELF);
     }
 
@@ -116,7 +115,8 @@ public class Tokenizer {
     public List<Token> getTokens() {
         List<Token> tokens = new ArrayList<>();
 
-        for (String line : codeLines) {
+        while (input.hasNext()) {
+            String line = input.nextLine();
             int lineLength = line.length();
             int currentColumn = 0;
 
