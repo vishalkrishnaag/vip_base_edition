@@ -1,5 +1,6 @@
 titan = 10 * 20 - 2 and true;
-HelloWord
-   vehicle.ApplyBrake();
+def HelloWord
+   src.java.sys.vehicle.init();
+   src.java.sys.vehicle.ApplyBrake();
    return titan;
 end

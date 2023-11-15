@@ -1,9 +1,6 @@
 package org.vip.Codegen;
 
 public enum Instruction {
-    begin, // class begin
-    method_begin,
-    method_end,
     end,
     str, // declare field
     TIN, // type integer
@@ -15,9 +12,6 @@ public enum Instruction {
 
     rts, // fetch variable
     call,  // call method
-    call_main,
-    call_obj, // call method with objectId
-    make_obj, // copy object
     ret, // return
     jne, // jump if not equal on last stack frame
     add,
@@ -37,7 +31,13 @@ public enum Instruction {
     jump_if_equal,
     jump_if_not_equal,
     register_rule,
-    register_field,
+    call_field,
     label_begin,
     label_end,
+    field_begin,
+    field_end,
+    array_begin,
+    array_end,
+    inner_array_begin,
+    getInner_array_end,
 }

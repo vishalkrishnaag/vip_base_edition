@@ -124,23 +124,15 @@ public class CodeGen {
     }
 
     private void emitData(int data) throws IOException {
-        if(this.write_count==50)
-        {
-            this.file.print('\n');
-            this.write_count=0;
-        }
-        else {
+//        if(this.write_count==50)
+//        {
+//            this.file.print('\n');
+//            this.write_count=0;
+//        }
             this.file.print(data+" ");
-            this.write_count++;
-        }
 
     }
     private void emitInstruction(Instruction data) throws IOException {
-        if(this.write_count==50)
-        {
-            this.file.print('\n');
-            this.write_count=0;
-        }
         this.file.print("@"+data.ordinal()+" ");
     }
 
@@ -148,7 +140,7 @@ public class CodeGen {
         while (currentEvent < totalSize) {
             if (cevent.eventType == event.CLASS_DECL) {
                 currentClassId = getClassId(cevent.Elements.get(0));
-                System.out.println("analyzing '" + cevent.Elements.get(0) + "'.class ");
+                System.out.println("analyzing '" + cevent.Elements.get(0) + ".class' ");
                 file = new PrintWriter("src/test/java/"+currentClassId+".vpx");
                 currentClassName=cevent.Elements.get(0);
                 GenerateCodeForClassDecl();
@@ -239,7 +231,7 @@ public class CodeGen {
         expect(event.CLASS_DECL, true);
         while (cevent.eventType != event.CLASS_END) {
             if (cevent.eventType == event.VAR_DECL_BEGIN) {
-                GenerateCodeForVarDecl();
+                GenerateCodeForFieldTerm();
             }  else if (cevent.eventType == event.METHOD_DECL_BEGIN) {
                 GenerateCodeForMethodDecl();
             } else if (cevent.eventType == event.EXTENDS_EVENT) {
@@ -264,17 +256,14 @@ public class CodeGen {
         expect(event.METHOD_DECL_BEGIN);
         String methodName = symbol.Elements.get(0);
         Integer methodId= getMethodId(methodName,currentClassId);
-        int index = getMethodId(methodName,currentClassId);
-        emitData(index);
-        emitInstruction( Instruction.method_begin);
-        GenerateCodeForBlockStatements();
-        //not checking it now
-//        if(!write_count)
-//        {
-//            throw new VipCompilerException("method '"+methodName+"' has no body either comment it else remove it");
-//        }
+//        int index = getMethodId(methodName,currentClassId);
+        emitInstruction( Instruction.label_begin);
+        if(event.METHOD_DECL_END!=cevent.eventType)
+        {
+            GenerateCodeForBlockStatements();
+        }
         expect(event.METHOD_DECL_END);
-        emitInstruction( Instruction.method_end);
+        emitInstruction( Instruction.label_end);
     }
 
     private Tripples<String, Integer, Integer> create_tripple(String methodName, Integer methodId, Integer classId) {
@@ -448,7 +437,18 @@ public class CodeGen {
     }
 
     private void GenerateCodeForFieldTerm() throws Exception {
-        if (cevent.eventType == event.STATIC_FILED) {
+        // eat var declare in entry
+        advanceEvent();
+        if (cevent.eventType == event.VAR_DECL_IASSIGN) {
+            // a : data
+            for (String it : cevent.getElements()) {
+                emitData(getFieldId(it, currentClassId));
+                emitInstruction(Instruction.call_field);
+            }
+            advanceEvent();
+        }
+
+       if (cevent.eventType == event.STATIC_FILED) {
             String stat_field = cevent.Elements.get(0);
             if (cevent.Elements.get(1) == "STRING") {
                 for(char i : stat_field.toCharArray())
@@ -499,6 +499,7 @@ public class CodeGen {
         if (cevent.eventType == event.SELF_FIELD) {
             throw new VipCompilerException("self is not allowed in field declarations");
         }
+        expect(event.VAR_DECL_END);
     }
 
     private void GenerateCodeForTerminal(int classId) throws Exception {
@@ -685,8 +686,9 @@ public class CodeGen {
         Integer bodyName = getLabel();
         GenerateCodeForExpressionList(currentClassId); // condition
         emitData(labelName);
-        emitInstruction(Instruction.register_rule);
+        emitInstruction(Instruction.label_begin);
         GenerateCodeForBlockStatements(); // body
+        emitInstruction(Instruction.label_end);
         emitData(bodyName);
         emitInstruction(Instruction.register_rule);
         emitData(bodyName);
@@ -703,7 +705,7 @@ public class CodeGen {
             // a : data
             for (String it : cevent.getElements()) {
                 emitData(getFieldId(it, currentClassId));
-                emitInstruction(Instruction.register_field);
+                emitInstruction(Instruction.call_field);
             }
             advanceEvent();
         }

@@ -1,8 +1,8 @@
    Cars.init();
-    Vehicle
-        Cars.HelloWord(titan = "titan called from vehicle class");
+    def Vehicle
+        src.java.sys.Cars.HelloWord(titan = "titan called from vehicle class");
     end
 
-    ApplyBrake
-        Cars.HelloWord(titan = "titan applied break");
+   def ApplyBrake
+        src.java.sys.Cars.HelloWord(titan = "titan applied break");
     end

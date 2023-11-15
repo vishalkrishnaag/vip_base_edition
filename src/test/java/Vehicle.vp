@@ -1,7 +1,9 @@
- chang = null;
+ change = null;
  speed = 0;
- def flush end
- def destroy end
+ def flush
+ end
+ def destroy
+ end
  def init
     if speed == 0 {
        System.println("speed is not initialized , setting speed to 30");

@@ -2,10 +2,10 @@ example = "hello world"+ "hello cardamom";
 ram = if example equals "hello" { return "hello kids"};
 titan = "something new" or "something else";
 
-Main
-     ram = System.scan(in:"write something good");
-     titan =  Cars.HelloWord(titan="hello world");
-     ram = Cars.HelloWord(titan = "princes of titan and "+self.titan);
+def Main
+     ram = modules.System.scan(in:"write something good");
+     titan = Cars.HelloWord(titan="hello world");
+     ram = src.java.test.Cars.HelloWord(titan = "princes of titan and "+self.titan);
      if ram equals "hello world"
      {
         System.println(in = self.ram);

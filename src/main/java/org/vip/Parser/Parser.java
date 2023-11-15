@@ -352,7 +352,7 @@ public class Parser {
             if (token.getType() == TokenType.ASSIGN) {
                 advanceToken();//eat :
                 eventMap.add(new Symbol(event.VAR_DECL_IASSIGN, varList));
-                this.compileExpressionList(false);
+                this.compileVarStaticExpr();
                 break;
             }
 
@@ -616,7 +616,7 @@ public class Parser {
                 } else if (isOperator(nextToken().getType())) {
                     throw new VipCompilerException("A Field must be static  does not contain any expressions");
                 } else {
-                    throw new VipCompilerException("unknown operation on " + token.getType() + " : " + token.getLexme());
+                    throw new VipCompilerException("unknown operation on " + token.getType() + " = " + token.getLexme());
                 }
             case INT, TRUE, FALSE, NULL_T:
                 addEvent(getSymbol(event.STATIC_FILED, listOf(token.getLexme(), token.getType().toString())));
@@ -676,12 +676,6 @@ public class Parser {
         retreatToken();
         return nextToken;
     }
-// private Token getNextToken() {
-//     advanceToken();
-//     Token nextToken = getToken();
-//     retreatToken();
-//     return nextToken;
-// }
 
     private boolean isOperator(TokenType type) throws VipCompilerException {
         switch (type) {

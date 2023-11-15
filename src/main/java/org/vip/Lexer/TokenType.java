@@ -1,7 +1,6 @@
 package org.vip.Lexer;
 
 public enum TokenType {
-    VAR,
     STRING,
     SEMICOLON,
     COMMA,
@@ -47,6 +46,7 @@ public enum TokenType {
     ELSE,
     WHEN,
     END,
+    DEF,
     WHILE,
     FOR_EACH,
     FLOAT,
