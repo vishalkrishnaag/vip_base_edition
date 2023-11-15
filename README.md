@@ -1,9 +1,9 @@
 # virtual interface programming language
-## a language just like ruby
+##  It is a language just like ruby
 
 ```ruby
     
-     data ="hellow world";
+   data ="hellow world";
    def main
       System.println(data);
       data=32 * 21 - 221;
@@ -13,4 +13,5 @@
     end
 
 ```
-it is the next version after making vip compiled one
+it is the next version after making vip compiled one.
+currently it is non functional 
